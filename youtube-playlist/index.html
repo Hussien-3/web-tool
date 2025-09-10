@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>YouTube Course Playlist</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f5f7fa;
+        margin: 20px;
+      }
+      h1 {
+        text-align: center;
+        margin-bottom: 20px;
+        font-size: 28px;
+      }
+      form {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      input[type="text"] {
+        width: 60%;
+        padding: 12px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        font-size: 16px;
+      }
+      button {
+        padding: 12px 18px;
+        border: none;
+        border-radius: 6px;
+        background: #0073e6;
+        color: white;
+        cursor: pointer;
+        font-size: 16px;
+      }
+      button:hover {
+        background: #005bb5;
+      }
+
+      .progress-container {
+        width: 80%;
+        margin: 20px auto;
+        background: #ddd;
+        border-radius: 8px;
+        overflow: hidden;
+        height: 30px;
+      }
+      .progress-bar {
+        height: 100%;
+        width: 0%;
+        background: #005bb5;
+        text-align: center;
+        color: white;
+        font-size: 16px;
+        line-height: 30px;
+        transition: width 0.3s ease;
+      }
+
+      .lesson {
+        display: flex;
+        align-items: center;
+        background: #fff;
+        padding: 15px;
+        margin: 12px auto;
+        border-radius: 8px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        width: 80%;
+        font-size: 18px;
+      }
+      .lesson img {
+        width: 150px;
+        border-radius: 8px;
+        margin-right: 20px;
+      }
+      .lesson-info {
+        flex: 1;
+      }
+      .lesson a {
+        text-decoration: none;
+        color: #0073e6;
+        font-size: 20px;
+        font-weight: bold;
+      }
+      .lesson input {
+        margin-left: 10px;
+        transform: scale(1.4);
+      }
+
+      ::-webkit-scrollbar {
+        width: 12px;
+        height: 12px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: linear-gradient(180deg, #0073e6, #005bb5);
+        border-radius: 10px;
+        border: 2px solid #f1f1f1;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(180deg, #005bb5, #003f7f);
+      }
+
+      /* 📱 Responsive design */
+      @media (max-width: 768px) {
+        h1 {
+          font-size: 24px;
+        }
+        input[type="text"] {
+          width: 90%;
+          font-size: 18px;
+        }
+        button {
+          width: 90%;
+          margin-top: 10px;
+          font-size: 18px;
+        }
+
+        .lesson {
+          flex-direction: column;
+          align-items: flex-start;
+          width: 95%;
+          font-size: 20px;
+        }
+        .lesson img {
+          width: 100%;
+          max-width: 400px;
+          margin: 0 0 10px 0;
+        }
+        .lesson a {
+          font-size: 22px;
+        }
+        .lesson input {
+          transform: scale(1.6);
+          margin-top: 8px;
+        }
+      }
+
+      @media (max-width: 480px) {
+        h1 {
+          font-size: 22px;
+        }
+        .lesson a {
+          font-size: 20px;
+        }
+        .lesson img {
+          width: 100%;
+          max-width: 320px;
+        }
+        .progress-container {
+          width: 95%;
+          height: 35px;
+        }
+        .progress-bar {
+          font-size: 18px;
+          line-height: 35px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>📚 YouTube Playlist Viewer</h1>
+
+    <form id="apiForm">
+      <input
+        type="text"
+        id="apiUrl"
+        placeholder="Paste YouTube API URL here... (use google cloud and youtube api)"
+        required
+      />
+      <button type="submit">Load Playlist</button>
+    </form>
+
+    <div class="progress-container">
+      <div class="progress-bar" id="progressBar">0%</div>
+    </div>
+
+    <div id="lessons"></div>
+
+    <script>
+      const lessonsDiv = document.getElementById("lessons");
+      const progressBar = document.getElementById("progressBar");
+
+      let totalLessons = 0;
+      let doneLessons = 0;
+
+      // get saved progress from localStorage
+      const savedProgress =
+        JSON.parse(localStorage.getItem("playlistProgress")) || {};
+
+      document
+        .getElementById("apiForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const url = document.getElementById("apiUrl").value.trim();
+          lessonsDiv.innerHTML = "<p>⏳ Loading...</p>";
+          totalLessons = 0;
+          doneLessons = 0;
+
+          try {
+            let apiUrl = url;
+            let allItems = [];
+
+            while (apiUrl) {
+              const res = await fetch(apiUrl);
+              const data = await res.json();
+
+              if (!data.items) {
+                lessonsDiv.innerHTML = "<p>❌ No videos found.</p>";
+                return;
+              }
+
+              allItems = allItems.concat(data.items);
+
+              if (data.nextPageToken) {
+                apiUrl = url + "&pageToken=" + data.nextPageToken;
+              } else {
+                apiUrl = null;
+              }
+            }
+
+            lessonsDiv.innerHTML = "";
+            totalLessons = allItems.length;
+
+            allItems.forEach((item) => {
+              const title = item.snippet.title;
+              const videoId = item.snippet.resourceId.videoId;
+              const thumb = item.snippet.thumbnails.medium.url;
+              const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+              const div = document.createElement("div");
+              div.className = "lesson";
+              const checked = savedProgress[videoId] ? "checked" : "";
+              if (checked) doneLessons++;
+
+              div.innerHTML = `
+            <img src="${thumb}" alt="thumb">
+            <div class="lesson-info">
+              <a href="${videoUrl}" target="_blank">${title}</a>
+            </div>
+            <input type="checkbox" class="check" data-id="${videoId}" ${checked}>
+          `;
+              lessonsDiv.appendChild(div);
+
+              div
+                .querySelector(".check")
+                .addEventListener("change", function () {
+                  const vid = this.getAttribute("data-id");
+                  if (this.checked) {
+                    doneLessons++;
+                    savedProgress[vid] = true;
+                  } else {
+                    doneLessons--;
+                    delete savedProgress[vid];
+                  }
+                  localStorage.setItem(
+                    "playlistProgress",
+                    JSON.stringify(savedProgress)
+                  );
+                  updateProgress();
+                });
+            });
+
+            updateProgress();
+          } catch (err) {
+            lessonsDiv.innerHTML = "<p>⚠️ Error fetching data.</p>";
+            console.error(err);
+          }
+        });
+
+      function updateProgress() {
+        const percent = totalLessons
+          ? Math.round((doneLessons / totalLessons) * 100)
+          : 0;
+        progressBar.style.width = percent + "%";
+        progressBar.textContent = percent + "%";
+      }
+    </script>
+  </body>
+</html>
